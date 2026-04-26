@@ -72,13 +72,22 @@ def get_rsa(bits: int = 4096, authorization: str = Header(None)):
 async def stripe_webhook(request: Request):
     payload = await request.body()
     event = json.loads(payload)
-    if event['type'] == 'checkout.session.completed':
+    event_type = event['type']
+
+    email = None
+    if event_type == 'checkout.session.completed':
         email = event['data']['object']['customer_details']['email']
+    elif event_type == 'charge.succeeded':
+        email = event['data']['object']['billing_details']['email']
+
+    if email:
         nova_key = f"sk_live_{secrets.token_hex(12)}"
         save_key(nova_key, 100000)
         print(f"NOVA KEY GERADA: {nova_key} para {email}")
-    return {"status": "ok"}
+        # TODO: manda email com a key pro cliente aqui
+        return {"status": "ok", "key": nova_key}
 
+    return {"status": "ignored"}
 HTML_LANDING = """<!DOCTYPE html><html><head><title>Tannhaus HSM</title></head><body><h1>Tannhaus HSM API</h1><p>RSA-4096 em 0.05s</p></body></html>"""
 
 if __name__ == "__main__":
